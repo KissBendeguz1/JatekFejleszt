@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <title>PC Összeszerelő Játék</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<style>
+    body { font-family: sans-serif; background: #2c3e50; color: white; text-align: center; }
+.game-container { max-width: 800px; margin: auto; }
+.main-area { display: flex; justify-content: space-around; margin-top: 20px; }
+
+.panel {
+    border: 2px solid #ecf0f1;
+    padding: 20px;
+    width: 40%;
+    min-height: 300px;
+    background: #34495e;
+}
+
+.part {
+    background: #e67e22;
+    margin: 10px;
+    padding: 10px;
+    cursor: pointer;
+    border-radius: 5px;
+    transition: 0.3s;
+}
+
+.part:hover { background: #d35400; }
+.part.installed { opacity: 0.3; cursor: default; }
+
+#slots {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.installed-item {
+    background: #27ae60;
+    padding: 10px;
+    border-radius: 5px;
+    animation: slideIn 0.5s ease;
+}
+
+@keyframes slideIn {
+    from { transform: translateX(50px); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+.case-bg {
+    width: 400px;
+    height: 450px;
+    background: #444;
+    position: relative;
+    border: 4px solid #777;
+    background-image: url("./bg.png");
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: cover;
+}
+
+.drop-zone {
+    position: absolute;
+    border: 3px dashed white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    color: white;
+    transition: background 0.3s;
+    font-weight: bold;
+    font-size: 16px;
+}
+
+/* Példa pozíciók a házon belül */
+
+#slot-psu { top: 345px; left: 0px; width: 110px; height: 50px;}
+#slot-cpu { top: 125px; left: 100px; width: 50px; height: 50px; }
+#slot-ram { top: 90px; left: 180px; width: 50px; height: 130px; }
+#slot-gpu { top: 210px; left: 40px; width: 100px; height: 95px; }
+
+.drop-zone.hover { background: rgba(46, 204, 113, 0.3); border-color: #2ecc71; }
+.part.dragging { opacity: 0.5; }
+</style>
+<body>
+    <div class="game-container">
+        <h1>PC Összeszerelő Szimulátor</h1>
+        <p id="instruction">Kattints az alkatrészekre a megfelelő sorrendben!</p>
+        
+<div class="main-area">
+    <div id="inventory" class="panel">
+        <h3>Raktár</h3>
+        <div class="part" draggable="true" id="cpu" data-target="slot-cpu">CPU</div>
+        <div class="part" draggable="true" id="gpu" data-target="slot-gpu">Videókártya</div>
+        <div class="part" draggable="true" id="ram" data-target="slot-ram">RAM</div>
+        <div class="part" draggable="true" id="psu" data-target="slot-psu">PSU</div>
+    </div>
+
+    <div id="pc-case" class="case-bg">
+        <h3>Gépház belső</h3>
+        <div class="drop-zone" id="slot-cpu">CPU helye</div>
+        <div class="drop-zone" id="slot-ram">RAM helye</div>
+        <div class="drop-zone" id="slot-gpu">GPU helye</div>
+        <div class="drop-zone" id="slot-psu">PSU helye</div>
+    </div>
+</div>
+        </div>
+        
+        <button onclick="resetGame()">Újrakezdés</button>
+    </div>
+    <script src="script.js"></script>
+</body>
+<script>
+const parts = document.querySelectorAll('.part');
+const zones = document.querySelectorAll('.drop-zone');
+
+function resetGame() {
+    window.location.reload()
+}
+
+// 1. Alkatrészek eseményei
+parts.forEach(part => {
+    part.addEventListener('dragstart', (e) => {
+        e.dataTransfer.setData('text/plain', part.id); // Eltároljuk az ID-t
+        part.classList.add('dragging');
+    });
+
+    part.addEventListener('dragend', () => {
+        part.classList.remove('dragging');
+    });
+});
+
+// 2. Célzónák eseményei
+zones.forEach(zone => {
+    // Engedélyezzük a "ráhúzást"
+    zone.addEventListener('dragover', (e) => {
+        e.preventDefault(); 
+        zone.classList.add('hover');
+    });
+
+    zone.addEventListener('dragleave', () => {
+        zone.classList.remove('hover');
+    });
+
+    zone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        zone.classList.remove('hover');
+
+        const partId = e.dataTransfer.getData('text/plain');
+        const partElement = document.getElementById(partId);
+        const targetZoneId = partElement.getAttribute('data-target');
+
+        // Ellenőrzés: jó helyre húztuk?
+        if (zone.id === targetZoneId) {
+            zone.innerText = ""; // Szöveg törlése
+            zone.appendChild(partElement); // Alkatrész "behelyezése"
+            partElement.setAttribute('draggable', 'false');
+            partElement.style.cursor = 'default';
+            checkWin();
+        } else {
+            alert("Ez az alkatrész nem ide való!");
+        }
+    });
+});
+
+function checkWin() {
+    const installedParts = document.querySelectorAll('.case-bg .part').length;
+    if (installedParts === parts.length) {
+        document.getElementById('instruction').innerText = "Kész! A gép összeállt!";
+    }
+}
+</script>
+</html>
