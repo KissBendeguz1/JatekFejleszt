@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <title>Autó Diagnosztika Játék</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<style>
+    body { font-family: 'Segoe UI', sans-serif; background: #1a1a1a; color: #eee; text-align: center; }
+
+#car-view {
+    position: relative;
+    width: 300px;
+    height: 500px;
+    background: #333; /* Az autó alap színe */
+    margin: 20px auto;
+    border-radius: 50px 50px 20px 20px;
+    border: 5px solid #444;
+}
+
+.part {
+    position: absolute;
+    background: #555;
+    border: 1px solid #666;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.part:hover { background: #777; }
+
+/* Alkatrész pozíciók */
+.engine-tray { top: 40px; left: 75px; width: 150px; height: 100px; border-radius: 10px; }
+.exhaust-pipe { top: 150px; left: 140px; width: 20px; height: 250px; background: #666; }
+.suspension-left { top: 350px; left: 40px; width: 60px; height: 15px; }
+.fuel-tank { top: 280px; left: 80px; width: 140px; height: 80px; border-radius: 5px; }
+.brake-line { top: 200px; left: 60px; width: 5px; height: 100px; background: #444; }
+
+/* Állapotok */
+.found-faulty {
+    background: #d35400 !important; /* Rozsda szín */
+    box-shadow: 0 0 15px #e67e22;
+}
+
+.found-healthy {
+    background: #27ae60 !important; /* Jó állapot */
+}
+
+#log {
+    max-width: 400px;
+    margin: auto;
+    background: #222;
+    padding: 10px;
+    border-radius: 8px;
+}
+
+#car-view {
+    position: relative;
+    width: 320px;
+    height: 580px;
+    background: #2a2a2a;
+    margin: 20px auto;
+    border-radius: 50px;
+    border: 10px solid #333;
+}
+
+.part {
+    position: absolute;
+    background: #555;
+    border: 1px solid #666;
+    cursor: pointer;
+    box-sizing: border-box;
+}
+
+/* ROZSDÁS TEXTÚRA */
+.part[data-faulty="true"] {
+    background: 
+        repeating-radial-gradient(circle at 50% 50%, #8b4513 0%, #5d2e0a 10%, #3e1f07 20%);
+    opacity: 0.9;
+    border: 1px solid #7a4015;
+}
+
+/* --- ELSŐ RÉSZ --- */
+.wheel-fl { top: 70px; left: -15px; width: 35px; height: 75px; background: #111; border-radius: 4px; }
+.wheel-fr { top: 70px; right: -15px; width: 35px; height: 75px; background: #111; border-radius: 4px; }
+
+.control-arm-l { top: 100px; left: 20px; width: 90px; height: 20px; border-radius: 5px; }
+.control-arm-r { top: 100px; right: 20px; width: 90px; height: 20px; border-radius: 5px; }
+
+.oil-pan { top: 85px; left: 110px; width: 100px; height: 60px; border-radius: 10px; z-index: 2; }
+
+/* --- KÖZÉPSŐ RÉSZ --- */
+.exhaust-mid { top: 145px; left: 152px; width: 16px; height: 320px; z-index: 1; }
+
+/* --- HÁTSÓ RÉSZ --- */
+.wheel-rl { top: 430px; left: -15px; width: 35px; height: 75px; background: #111; border-radius: 4px; }
+.wheel-rr { top: 430px; right: -15px; width: 35px; height: 75px; background: #111; border-radius: 4px; }
+
+.rear-axle { top: 460px; left: 20px; width: 280px; height: 20px; border-radius: 5px; }
+.fuel-tank { top: 380px; left: 50px; width: 90px; height: 70px; border-radius: 10px; }
+.muffler { top: 460px; left: 135px; width: 50px; height: 80px; border-radius: 12px; }
+
+/* Állapotjelzők */
+.checked { background: #27ae60 !important; border-color: #2ecc71 !important; }
+.faulty-selected { animation: flicker 0.2s infinite; outline: 3px solid #e67e22; }
+
+@keyframes flicker {
+    0% { opacity: 1; } 50% { opacity: 0.8; } 100% { opacity: 1; }
+}
+@keyframes shake {
+    0% { transform: translateX(0); }
+    25% { transform: translateX(5px); }
+    50% { transform: translateX(-5px); }
+    100% { transform: translateX(0); }
+}
+
+/* Ez az osztály teszi vizuálisan rozsdássá az alkatrészt már a játék elején */
+.visually-rusty {
+    background: 
+        radial-gradient(circle at 30% 30%, #8b4513 0%, #5d2e0a 40%, #3e1f07 80%) !important;
+    border: 1px solid #7a4015 !important;
+    box-shadow: inset 0 0 8px #000;
+}
+
+/* Amikor a játékos rákattint a rozsdásra (visszajelzés) */
+.faulty-selected {
+    outline: 3px solid #ff4500;
+    filter: brightness(1.2);
+    animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.03); }
+    100% { transform: scale(1); }
+}
+
+li {
+    list-style: none;
+}
+</style>
+<body>
+    <div class="game-wrapper">
+    <h1>Alváz Diagnosztika v2.0</h1>
+    <p id="status">Keresd meg a rozsdás alkatrészeket! (Kattints a vizsgálathoz)</p>
+    
+    <div id="car-view">
+        <div class="car-frame">
+            <div class="part wheel-fl" data-name="Első bal kerék" data-faulty="false"></div>
+            <div class="part wheel-fr" data-name="Első jobb kerék" data-faulty="false"></div>
+            <div class="part control-arm-l" data-name="Bal első lengőkar" data-faulty="true"></div>
+            <div class="part control-arm-r" data-name="Jobb első lengőkar" data-faulty="false"></div>
+            
+            <div class="part oil-pan" data-name="Olajteknő" data-faulty="false"></div>
+            <div class="part exhaust-mid" data-name="Kipufogó cső" data-faulty="true"></div>
+            
+            <div class="part wheel-rl" data-name="Hátsó bal kerék" data-faulty="false"></div>
+            <div class="part wheel-rr" data-name="Hátsó jobb kerék" data-faulty="false"></div>
+            <div class="part muffler" data-name="Hátsó kipufogódob" data-faulty="true"></div>
+            <div class="part fuel-tank" data-name="Üzemanyagtartály" data-faulty="false"></div>
+            <div class="part rear-axle" data-name="Hátsó híd / Merev tengely" data-faulty="false"></div>
+        </div>
+    </div>
+<button onclick="restart()">Ujrakezdés</button>
+    <div id="inspector-panel">
+        <h3>Vizsgálati napló:</h3>
+        <ul id="found-list"></ul>
+    </div>
+    
+</div>
+
+</div>
+    <script src="script.js"></script>
+</body>
+<script>
+
+    function restart() {
+        window.location.reload()
+    }
+
+
+// --- JÁTÉK KONFIGURÁCIÓ ---
+const parts = document.querySelectorAll('.part');
+const log = document.getElementById('found-list');
+const statusText = document.getElementById('status');
+
+let foundCount = 0;
+const totalFaultyCount = 3; // Ennyi rozsdás alkatrész generálódik minden körben
+
+/**
+ * Véletlenszerűen kiválaszt alkatrészeket és rozsdássá teszi őket.
+ */
+function initializeGame() {
+    // 1. Alaphelyzetbe állítás: minden osztályt és attribútumot törlünk
+    foundCount = 0;
+    log.innerHTML = "";
+    statusText.innerText = `Keresd a rozsdafoltokat! Találat: 0 / ${totalFaultyCount}`;
+    
+    parts.forEach(p => {
+        p.setAttribute('data-faulty', 'false');
+        p.classList.remove('visually-rusty', 'faulty-selected', 'checked');
+    });
+
+    // 2. Alkatrészek listájának összekeverése (Fisher-Yates algoritmus alapú keverés)
+    const partArray = Array.from(parts);
+    for (let i = partArray.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [partArray[i], partArray[j]] = [partArray[j], partArray[i]];
+    }
+
+    // 3. Az első X darab alkatrész kijelölése hibásnak
+    for (let i = 0; i < totalFaultyCount; i++) {
+        partArray[i].setAttribute('data-faulty', 'true');
+        partArray[i].classList.add('visually-rusty'); // Itt válik láthatóvá a rozsda
+    }
+}
+
+/**
+ * Kezeli az alkatrészekre való kattintást.
+ */
+parts.forEach(part => {
+    part.addEventListener('click', function() {
+        // Ha már vizsgáltuk az alkatrészt, ne csináljon semmit
+        if (this.classList.contains('checked') || this.classList.contains('faulty-selected')) {
+            return;
+        }
+
+        const name = this.getAttribute('data-name');
+        const isFaulty = this.getAttribute('data-faulty') === 'true';
+        const li = document.createElement('li');
+
+        if (isFaulty) {
+            // SIKER: Rozsdás alkatrészt találtunk
+            this.classList.add('faulty-selected');
+            li.innerHTML = `<b style="color: #ff4500;">[MEGTALÁLVA]</b> ${name} - Kritikus korrózió!`;
+            foundCount++;
+        } else {
+            // Hiba: Ép alkatrészre kattintottunk
+            this.classList.add('checked');
+            li.innerHTML = `<b style="color: #2ecc71;">[RENDBEN]</b> ${name} - Tiszta fémfelület.`;
+        }
+
+        // Napló frissítése (legfrissebb esemény kerül felülre)
+        log.prepend(li);
+        
+        // Játék állapotának ellenőrzése
+        updateGameStatus();
+    });
+});
+
+/**
+ * Frissíti a felső állapotjelző szöveget.
+ */
+function updateGameStatus() {
+    if (foundCount === totalFaultyCount) {
+        statusText.innerHTML = "<span style='color: #2ecc71; font-weight: bold;'>GRATULÁLOK! Minden rozsdás alkatrészt azonosítottál!</span>";
+        
+        // 3 másodperc múlva akár újra is indulhatna a játék automatikusan:
+        // setTimeout(initializeGame, 3000); 
+    } else {
+        statusText.innerText = `Keresd a rozsdafoltokat! Találat: ${foundCount} / ${totalFaultyCount}`;
+    }
+}
+
+// Játék indítása az oldal betöltésekor
+window.onload = initializeGame;
+</script>
+</html>
