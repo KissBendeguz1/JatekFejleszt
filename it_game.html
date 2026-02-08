@@ -7,7 +7,12 @@
 </head>
 <style>
     body { font-family: sans-serif; background: #2c3e50; color: white; text-align: center; }
-.game-container { max-width: 800px; margin: auto; }
+.game-container { max-width: 800px; margin: auto; 
+    border: 3px dashed white;
+    border-radius: 20px;
+    padding: 20px;
+    margin-top: 50px;
+}
 .main-area { display: flex; justify-content: space-around; margin-top: 20px; }
 
 .panel {
@@ -25,6 +30,8 @@
     cursor: pointer;
     border-radius: 5px;
     transition: 0.3s;
+    width: 100px;
+    height: 100px;
 }
 
 .part:hover { background: #d35400; }
@@ -72,6 +79,85 @@
     font-weight: bold;
     font-size: 16px;
 }
+
+#cpu {
+    background-image: url("./cpu.png");
+     background-repeat: no-repeat;
+    background-position: center;
+    background-size: cover;
+}
+
+#gpu {
+        background-image: url("./gpu.png");
+     background-repeat: no-repeat;
+    background-position: center;
+    background-size: cover;
+}
+
+#ram {
+        background-image: url("./ram.png");
+     background-repeat: no-repeat;
+    background-position: center;
+    background-size: cover;
+}
+
+#psu {
+        background-image: url("./psu.png");
+     background-repeat: no-repeat;
+    background-position: center;
+    background-size: cover;
+}
+
+#goodpos-cpu {
+        background-image: url("./cpu.png");
+     background-repeat: no-repeat;
+    background-position: center;
+    background-size: cover;
+    background-color: transparent;
+    width: 100px;
+    height: 100px;
+}
+
+
+#goodpos-ram {
+        background-image: url("./ram.png");
+     background-repeat: no-repeat;
+    background-position: center;
+    background-size: cover;
+    background-color: transparent;
+    width: 100px;
+    height: 100px;
+}
+
+
+#goodpos-gpu {
+        background-image: url("./gpu.png");
+     background-repeat: no-repeat;
+    background-position: center;
+    background-size: cover;
+    background-color: transparent;
+    width: 100px;
+    height: 100px;
+}
+
+
+#goodpos-psu {
+        background-image: url("./psu.png");
+     background-repeat: no-repeat;
+    background-position: center;
+    background-size: cover;
+    background-color: transparent;
+    width: 150px;
+    height: 100px;
+}
+
+#inventory {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+
+}
+
 
 /* Példa pozíciók a házon belül */
 
@@ -157,6 +243,18 @@ zones.forEach(zone => {
             zone.appendChild(partElement); // Alkatrész "behelyezése"
             partElement.setAttribute('draggable', 'false');
             partElement.style.cursor = 'default';
+            if(partElement.id == "cpu") {
+                partElement.id = "goodpos-cpu"
+            }
+            if(partElement.id == "gpu") {
+                partElement.id = "goodpos-gpu"
+            }
+            if(partElement.id == "psu") {
+                partElement.id = "goodpos-psu"
+            }
+            if(partElement.id == "ram") {
+                partElement.id = "goodpos-ram"
+            }
             checkWin();
         } else {
             alert("Ez az alkatrész nem ide való!");
@@ -168,6 +266,8 @@ function checkWin() {
     const installedParts = document.querySelectorAll('.case-bg .part').length;
     if (installedParts === parts.length) {
         document.getElementById('instruction').innerText = "Kész! A gép összeállt!";
+        gamecontainer = document.getElementsByClassName("game-container")[0]
+        gamecontainer.style.borderColor = "green"
     }
 }
 </script>
