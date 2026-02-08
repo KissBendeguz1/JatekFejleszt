@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <title>Házépítő - Reprodukció</title>
+    <style>
+        :root {
+            --bg-color: #1a1a2e;
+            --container-bg: #0f3460;
+            --accent: #e94560;
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background-color: var(--bg-color);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .main-layout {
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+        }
+
+        /* Raktár */
+        .inventory {
+            width: 150px;
+            background: var(--container-bg);
+            padding: 15px;
+            border-radius: 10px;
+            border: 2px solid rgba(255,255,255,0.1);
+        }
+
+        .part {
+            width: 60px;
+            height: 60px;
+            margin: 10px auto;
+            cursor: grab;
+            background-size: cover;
+            border: 1px solid #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 8px;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        /* Formák stílusa */
+        .base { background-color: #777; }
+        .wall { background-color: #bdc3c7; }
+        .window { background-color: #bdc3c7; position: relative; }
+        .window::after { content: ''; position: absolute; width: 20px; height: 20px; background: #81d4fa; border: 2px solid white; }
+        .door { background-color: #bdc3c7; position: relative; }
+        .door::after { content: ''; position: absolute; bottom: 0; width: 15px; height: 25px; background: #5d4037; }
+        .roof-l { background-color: #1a1a2e; clip-path: polygon(100% 0, 0% 100%, 100% 100%); border: none !important; background-image: linear-gradient(45deg, #222, #000); }
+        .roof-r { background-color: #1a1a2e; clip-path: polygon(0 0, 0 100%, 100% 100%); border: none !important; background-image: linear-gradient(-45deg, #222, #000); }
+        .roof-flat { background-color: #16213e; height: 20px !important; margin-top: 40px; }
+
+        /* Játéktér és Referencia */
+        .grid-container, .reference-image {
+            display: grid;
+            grid-template-columns: repeat(5, 70px);
+            grid-template-rows: repeat(5, 70px);
+            gap: 5px;
+            background: var(--container-bg);
+            padding: 15px;
+            border-radius: 10px;
+            border: 3px solid #16213e;
+        }
+
+        .slot {
+            width: 70px;
+            height: 70px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .slot.drag-over { background: rgba(233, 69, 96, 0.3); }
+
+        .label {
+            text-align: center;
+            margin-bottom: 10px;
+            font-weight: bold;
+            color: var(--accent);
+        }
+
+        .controls {
+            margin-top: 25px;
+            display: flex;
+            gap: 20px;
+        }
+
+        button {
+            padding: 15px 40px;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            text-transform: uppercase;
+        }
+
+        .btn-check { background: #2ecc71; color: white; font-size: 1.2rem; }
+        .btn-reset { background: #e74c3c; color: white; }
+    </style>
+</head>
+<body>
+
+    <h1>Házépítő Kihívás</h1>
+    <p>Építsd fel ugyanazt a házat, amit a jobb oldali képen látsz!</p>
+
+    <div class="main-layout">
+        <div class="inventory">
+            <div class="label">RAKTÁR</div>
+            <div class="part base" draggable="true" id="base">ALAPZAT</div>
+            <div class="part wall" draggable="true" id="wall">FAL</div>
+            <div class="part window" draggable="true" id="window">ABLAK</div>
+            <div class="part door" draggable="true" id="door">AJTÓ</div>
+            <div class="part roof-l" draggable="true" id="roof-l">TETŐ B</div>
+            <div class="part roof-r" draggable="true" id="roof-r">TETŐ J</div>
+            <div class="part roof-flat" draggable="true" id="roof-flat">LAPOS</div>
+        </div>
+
+        <div>
+            <div class="label">TE ÉPÍTMÉNYED</div>
+            <div class="grid-container" id="playerGrid"></div>
+        </div>
+
+        <div>
+            <div class="label">MINTA</div>
+            <div class="reference-image" id="refGrid"></div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <button class="btn-check" onclick="checkSolution()">KÉSZ - Ellenőrzés</button>
+        <button class="btn-reset" onclick="location.reload()">Újrakezdés</button>
+    </div>
+
+    <script>
+        const playerGrid = document.getElementById('playerGrid');
+        const refGrid = document.getElementById('refGrid');
+        let draggedType = null;
+
+        // A megoldás (A beküldött kép alapján indexelve 0-24-ig)
+        // 5x5-ös rács: 0-4 (első sor), 5-9 (második)...
+        const solution = {
+            2: 'roof-flat',
+            6: 'roof-l', 7: 'wall', 8: 'roof-r',
+            10:'roof-l',11: 'window', 12: 'wall', 13: 'window', 14: 'roof-r',
+            16: 'wall', 17: 'door', 18: 'wall',
+            21: 'base', 22: 'base', 23: 'base'
+        };
+
+        // Rácsok generálása
+        for (let i = 0; i < 25; i++) {
+            // Játékos slot
+            const slot = document.createElement('div');
+            slot.classList.add('slot');
+            slot.dataset.index = i;
+            setupDragAndDrop(slot);
+            playerGrid.appendChild(slot);
+
+            // Referencia slot
+            const refSlot = document.createElement('div');
+            refSlot.classList.add('slot');
+            if (solution[i]) {
+                const item = document.createElement('div');
+                item.classList.add('part', solution[i]);
+                refSlot.appendChild(item);
+            }
+            refGrid.appendChild(refSlot);
+        }
+
+        function setupDragAndDrop(slot) {
+            slot.addEventListener('dragover', (e) => e.preventDefault());
+            slot.addEventListener('dragenter', () => slot.classList.add('drag-over'));
+            slot.addEventListener('dragleave', () => slot.classList.remove('drag-over'));
+            slot.addEventListener('drop', (e) => {
+                e.preventDefault();
+                slot.classList.remove('drag-over');
+                slot.innerHTML = `<div class="part ${draggedType}"></div>`;
+                slot.dataset.type = draggedType;
+            });
+        }
+
+        document.querySelectorAll('.inventory .part').forEach(part => {
+            part.addEventListener('dragstart', (e) => draggedType = e.target.id);
+        });
+
+        function checkSolution() {
+            let correct = true;
+            const slots = playerGrid.querySelectorAll('.slot');
+            
+            for (let i = 0; i < 25; i++) {
+                const playerType = slots[i].dataset.type || null;
+                const requiredType = solution[i] || null;
+
+                if (playerType !== requiredType) {
+                    correct = false;
+                    break;
+                }
+            }
+
+            if (correct) {
+                alert("GRATULÁLOK! Tökéletesen lemásoltad a házat! 🎉");
+            } else {
+                alert("Sajnos valahol hiba van. Nézd meg jobban a mintát! ❌");
+            }
+        }
+    </script>
+</body>
+</html>
