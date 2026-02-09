@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <title>Vegyész Szimulátor - Sandbox</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --panel-bg: #1e293b;
+            --accent-red: #ef4444;
+            --accent-blue: #3b82f6;
+            --success-green: #22c55e;
+            --text-color: #f8fafc;
+            --border-color: #334155;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            margin: 0;
+        }
+
+        .main-container {
+            display: flex;
+            gap: 20px;
+            max-width: 1200px;
+            width: 100%;
+            height: 650px;
+        }
+
+        /* Panelek stílusa a korábbi játékok alapján */
+        .panel {
+            background: var(--panel-bg);
+            padding: 20px;
+            border-radius: 15px;
+            border: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .scroll-area { overflow-y: auto; flex-grow: 1; }
+
+        .ingredient-item {
+            background: #334155;
+            padding: 12px;
+            margin-bottom: 8px;
+            border-left: 4px solid var(--accent-blue);
+            cursor: pointer;
+            transition: 0.2s;
+            border-radius: 4px;
+        }
+
+        .ingredient-item:hover { background: #475569; transform: translateX(5px); }
+
+        /* Lombik rész */
+        .reaction-chamber {
+            flex: 1.5;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .flask-container {
+            position: relative;
+            width: 220px;
+            height: 300px;
+            border: 6px solid #94a3b8;
+            border-radius: 15% 15% 45% 45%;
+            background: rgba(255,255,255,0.05);
+            overflow: hidden;
+            box-shadow: 0 0 40px rgba(0,0,0,0.5);
+            margin: 20px 0;
+        }
+
+        .liquid {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 0%;
+            background: var(--accent-blue);
+            transition: height 0.5s, background-color 0.8s;
+        }
+
+        /* Receptkönyv stílus */
+        .recipe-item {
+            font-size: 0.85rem;
+            padding: 8px;
+            margin-bottom: 5px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 5px;
+            color: #94a3b8;
+        }
+
+        .recipe-item.discovered {
+            color: var(--success-green);
+            border-left: 4px solid var(--success-green);
+            background: rgba(34, 197, 94, 0.1);
+        }
+
+        /* Gombok */
+        button {
+            padding: 15px;
+            width: 100%;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            text-transform: uppercase;
+            cursor: pointer;
+            margin-bottom: 10px;
+            transition: 0.3s;
+        }
+
+        .btn-mix { background: var(--accent-red); color: white; }
+        .btn-reset { background: #475569; color: white; }
+        button:hover { filter: brightness(1.2); }
+
+        .log-entry { font-size: 0.8rem; color: #94a3b8; border-bottom: 1px solid #334155; padding: 4px 0; }
+    </style>
+</head>
+<body>
+
+    <h1 style="margin:0">Vegyész Szimulátor</h1>
+    <p id="stats" style="color:var(--accent-blue); font-weight: bold; margin-bottom: 15px;">Felfedezett vegyületek: 0 / 10</p>
+
+    <div class="main-container">
+        <div class="panel" style="flex: 1;">
+            <h3>Összetevők</h3>
+            <div class="scroll-area" id="ingredients-list"></div>
+        </div>
+
+        <div class="panel reaction-chamber" style="flex: 1.5;">
+            <div class="flask-container">
+                <div id="liquid" class="liquid"></div>
+            </div>
+            <div style="width: 100%;">
+                <button class="btn-mix" onclick="checkReaction()">Elegyítés</button>
+                <button class="btn-reset" onclick="resetLab()">Lombik ürítése</button>
+            </div>
+        </div>
+
+        <div class="panel" style="flex: 1.5; gap: 15px;">
+            <div style="flex: 1; display: flex; flex-direction: column;">
+                <h3>Receptkönyv</h3>
+                <div class="scroll-area" id="recipe-book"></div>
+            </div>
+            <div style="flex: 1; border-top: 2px solid var(--border-color); padding-top: 10px;">
+                <h3>Napló</h3>
+                <div class="scroll-area" id="log"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const chemicals = [
+            { name: 'Sósav', color: '#facc15' }, { name: 'Salétromsav', color: '#f1f5f9' },
+            { name: 'Víz', color: '#3b82f6' }, { name: 'Nátrium', color: '#94a3b8' },
+            { name: 'Jód', color: '#a855f7' }, { name: 'Keményítő', color: '#ffffff' },
+            { name: 'Réz', color: '#ea580c' }, { name: 'Kén', color: '#eab308' },
+            { name: 'Ezüst', color: '#cbd5e1' }, { name: 'Kénsav', color: '#fbbf24' }
+        ];
+
+        const reactions = [
+            { id: 0, ingredients: ['Sósav', 'Salétromsav'], result: 'Királyvíz', color: '#f97316', discovered: false },
+            { id: 1, ingredients: ['Jód', 'Keményítő'], result: 'Lila Gőz', color: '#8b5cf6', discovered: false },
+            { id: 2, ingredients: ['Víz', 'Nátrium'], result: 'Durranógáz', color: '#f8fafc', discovered: false },
+            { id: 3, ingredients: ['Sósav', 'Réz'], result: 'Réz-klorid', color: '#14b8a6', discovered: false },
+            { id: 4, ingredients: ['Kénsav', 'Réz'], result: 'Réz-szulfát', color: '#2563eb', discovered: false },
+            { id: 5, ingredients: ['Ezüst', 'Salétromsav'], result: 'Ezüst-nitrát', color: '#f1f5f9', discovered: false },
+            { id: 6, ingredients: ['Jód', 'Ezüst'], result: 'Ezüst-jodid', color: '#fbbf24', discovered: false },
+            { id: 7, ingredients: ['Sósav', 'Nátrium'], result: 'Konyhasó oldat', color: '#e2e8f0', discovered: false },
+            { id: 8, ingredients: ['Kén', 'Réz'], result: 'Réz-szulfid', color: '#1e293b', discovered: false },
+            { id: 9, ingredients: ['Víz', 'Kénsav'], result: 'Hígított kénsav', color: '#fde047', discovered: false }
+        ];
+
+        let currentMix = [];
+        let discoveredCount = 0;
+
+        // Inicializálás
+        function init() {
+            const ingList = document.getElementById('ingredients-list');
+            chemicals.forEach(c => {
+                const div = document.createElement('div');
+                div.className = 'ingredient-item';
+                div.innerText = `🧪 ${c.name}`;
+                div.onclick = () => addIngredient(c);
+                ingList.appendChild(div);
+            });
+            updateRecipeBook();
+        }
+
+        function addIngredient(c) {
+            if (currentMix.length >= 4) return;
+            currentMix.push(c.name);
+            const liq = document.getElementById('liquid');
+            liq.style.height = (currentMix.length * 50) + "%";
+            liq.style.backgroundColor = c.color;
+            addLog(`Hozzáadva: ${c.name}`);
+        }
+
+        function updateRecipeBook() {
+            const book = document.getElementById('recipe-book');
+            book.innerHTML = '';
+            reactions.forEach(r => {
+                const div = document.createElement('div');
+                div.className = `recipe-item ${r.discovered ? 'discovered' : ''}`;
+                div.innerHTML = r.discovered ? 
+                    `✅ <b>${r.result}</b> (${r.ingredients.join(' + ')})` : 
+                    `❓ Ismeretlen vegyület (${r.ingredients.length} összetevő)`;
+                book.appendChild(div);
+            });
+            document.getElementById('stats').innerText = `Felfedezett vegyületek: ${discoveredCount} / 10`;
+        }
+
+        function checkReaction() {
+            const found = reactions.find(r => 
+                r.ingredients.length === currentMix.length &&
+                r.ingredients.every(i => currentMix.includes(i))
+            );
+
+            if (found) {
+                document.getElementById('liquid').style.backgroundColor = found.color;
+                if (!found.discovered) {
+                    found.discovered = true;
+                    discoveredCount++;
+                    addLog(`ÚJ FELFEDEZÉS: ${found.result}!`, true);
+                    updateRecipeBook();
+                }
+                alert(`Sikeres reakció: ${found.result}`);
+            } else {
+                alert("Nem történt reakció.");
+                addLog("A keverék hatástalan.");
+            }
+        }
+
+        function addLog(msg, highlight = false) {
+            const log = document.getElementById('log');
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            if (highlight) entry.style.color = 'var(--success-green)';
+            entry.innerText = `> ${msg}`;
+            log.prepend(entry);
+        }
+
+        function resetLab() {
+            currentMix = [];
+            document.getElementById('liquid').style.height = "0%";
+            addLog("Lombik kiürítve.");
+        }
+
+        init();
+    </script>
+</body>
+</html>
