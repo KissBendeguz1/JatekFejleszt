@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Market</title>
+</head>
+<style>body { background: #0d0d0d; color: #00ff41; font-family: 'Courier New', monospace; }
+
+.game-wrapper { max-width: 1100px; margin: auto; padding: 20px; border: 2px solid #333; }
+
+.market-header { display: flex; justify-content: space-between; padding: 10px; background: #1a1a1a; border-bottom: 2px solid #00ff41; }
+
+.trading-ui { display: flex; gap: 20px; margin-top: 20px; }
+
+/* Grafikon terület */
+#chart-container {
+    flex: 2; background: #111; border: 1px solid #333; position: relative;
+    height: 400px; padding: 10px;
+}
+
+#price-tag {
+    position: absolute; top: 10px; right: 20px; font-size: 24px; font-weight: bold;
+    background: rgba(0,0,0,0.7); padding: 5px 15px; border-left: 4px solid #00ff41;
+}
+
+/* Kontroll panel */
+#trade-controls { flex: 1; background: #1a1a1a; padding: 20px; border-radius: 4px; display: flex; flex-direction: column; gap: 20px; }
+
+.action-buttons { display: flex; gap: 10px; }
+
+button {
+    flex: 1; padding: 15px; font-weight: bold; cursor: pointer; border: none; font-size: 16px;
+}
+
+#buy-btn { background: #008f11; color: white; }
+#buy-btn:hover { background: #00ff41; color: black; }
+
+#sell-btn { background: #c0392b; color: white; }
+#sell-btn:not(:disabled):hover { background: #ff4d4d; }
+#sell-btn:disabled { background: #333; color: #666; cursor: not-allowed; }
+
+#trade-log { height: 150px; overflow-y: auto; font-size: 12px; background: #050505; padding: 10px; }
+#history-list { list-style: none; padding: 0; }
+#history-list li { border-bottom: 1px solid #222; margin-bottom: 4px; }
+#chart-container {
+    flex: 3; 
+    background: #050505; 
+    border: 1px solid #00ff41; 
+    position: relative;
+    height: 450px; /* Nagyobb grafikon */
+}
+
+#reset-btn {
+    width: 120px;
+}
+
+canvas { width: 100%; height: 100%; display: block; }
+
+.sell-group { display: flex; gap: 5px; flex: 1; }
+
+.btn-buy { background: #008f11; color: #fff; flex: 1; }
+.btn-sell { background: #c0392b; color: #fff; flex: 1; }
+.btn-sell:disabled { background: #222; color: #444; }
+
+/* Felső menü dizájn */
+.terminal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #111;
+    padding: 8px 15px;
+    border: 1px solid #333;
+    border-bottom: 2px solid #00ff41;
+    margin-bottom: 10px;
+    font-size: 14px;
+}
+
+.info-group { display: flex; align-items: center; gap: 8; font-weight: bold; }
+.label { color: #666; margin-right: 5px; }
+.value { color: #00ff41; }
+.highlight { font-size: 1.1em; text-shadow: 0 0 5px #00ff41; }
+
+/* Kicsi reboot gomb */
+.mini-btn {
+    background: transparent;
+    border: 1px solid #444;
+    color: #666;
+    padding: 4px;
+    font-size: 11px;
+    cursor: pointer;
+    transition: 0.3s;
+    text-transform: uppercase;
+    width: 200px;
+}
+.mini-btn:hover { border-color: #ff4d4d; color: #ff4d4d; }
+
+/* Grafikon és kezelőfelület */
+.trading-ui { display: flex; gap: 15px; height: 500px; }
+#chart-container { flex: 3; background: #050505; position: relative; border: 1px solid #222; }
+#price-tag { 
+    position: absolute; top: 10px; left: 10px; 
+    background: rgba(0,0,0,0.8); padding: 5px 15px; 
+    border-left: 3px solid #00ff41; font-size: 20px; 
+}
+
+#trade-controls { flex: 1; background: #111; border: 1px solid #222; padding: 15px; display: flex; flex-direction: column; }
+.stat-row { display: flex; justify-content: space-between; margin-bottom: 5px; color: #aaa; }
+.action-buttons { margin-top: auto; display: flex; flex-direction: column; gap: 10px; }
+
+
+/* A P/L villogjon, ha nagy a mozgás */
+#pnl { font-weight: bold; font-size: 1.2em; }
+
+/* Felső menü dizájn javítása */
+.terminal-header {
+    display: flex;
+    justify-content: space-between; /* Szétnyomja az elemeket a szélekre */
+    align-items: center;
+    background: #111;
+    padding: 10px 20px; /* Több belső hely */
+    border: 1px solid #333;
+    border-bottom: 2px solid #00ff41;
+    margin-bottom: 15px;
+}
+
+.info-group { 
+    display: flex; 
+    align-items: center; 
+    gap: 15px; /* Nagyobb távolság az ASSET és a BALANCE között */
+    flex-grow: 1; /* Ez engedi az adatokat terjeszkedni */
+}
+
+.info-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-right: 20px; /* Térköz az egységek között */
+}
+
+.label { color: #666; font-size: 12px; text-transform: uppercase; }
+.value { color: #00ff41; font-weight: bold; font-family: 'Courier New', monospace; }
+.highlight { font-size: 1.2em; text-shadow: 0 0 5px #00ff41; }
+
+/* A gomb méretének korlátozása */
+.mini-btn {
+    flex-shrink: 0; /* Megakadályozza, hogy a gomb összenyomódjon vagy megnyúljon */
+    width: auto; /* Csak akkora legyen, amekkora a szöveg */
+    min-width: 120px;
+    background: #222;
+    border: 1px solid #444;
+    color: #888;
+    padding: 6px 12px;
+    font-size: 11px;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.mini-btn:hover {
+    border-color: #ff4d4d;
+    color: #ff4d4d;
+    background: #2d1111;
+}
+</style>
+<body>
+<div class="game-wrapper">
+<header class="terminal-header">
+    <div class="info-group">
+        <div class="info-item">
+            <span class="label">Asset:</span>
+            <span id="asset-name" class="value">GTCH-UNIT</span>
+        </div>
+        <div class="info-item">
+            <span class="label">Balance:</span>
+            <span id="balance" class="value highlight">10000</span>
+            <span class="label" style="margin-left:2px;">FT</span>
+        </div>
+    </div>
+    <button id="reset-btn" class="mini-btn">Újraindítás</button>
+</header>
+    
+    <div class="trading-ui">
+        <div id="chart-container">
+            <canvas id="stockChart"></canvas>
+            <div id="price-tag"><span id="current-price">500.00</span> FT</div>
+        </div>
+
+        <div id="trade-controls">
+            <div class="position-info">
+                <h3>PORTFÓLIÓ STATUS</h3>
+                <div class="stat-row"><span>Készlet:</span> <span id="owned-units">0</span></div>
+                <div class="stat-row"><span>Átlag ár:</span> <span id="entry-price">0</span></div>
+                <div class="stat-row"><span>P/L:</span> <span id="pnl">0</span></div>
+            </div>
+            
+            <div class="action-buttons">
+                <button id="buy-btn" class="btn-buy">VÁSÁRLÁS</button>
+                <div class="sell-group">
+                    <button id="sell-one-btn" class="btn-sell" disabled>ELADÁS 1</button>
+                    <button id="sell-all-btn" class="btn-sell" disabled>ELADÁS ÖSSZES</button>
+                </div>
+            </div>
+
+            <div id="trade-log">
+                <ul id="history-list"></ul>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+<script>
+/**
+ * FINANCE-CORE TERMINAL v6.0 - Natural Market Movement
+ */
+
+const START_BALANCE = 10000;
+const START_PRICE = 500;
+let balance = START_BALANCE;
+let portfolio = [];
+let currentPrice = START_PRICE;
+let priceHistory = [START_PRICE]; 
+
+const canvas = document.getElementById('stockChart');
+const ctx = canvas.getContext('2d');
+
+function updatePrice() {
+    // SZABÁLYOZOTT MOZGÁS
+    // Nem százalékkal szorzunk, hanem egy fix tartományú véletlen számot adunk hozzá
+    // Így nem lesznek 5-ről 900-ra ugrások egy pillanat alatt.
+    const maxStep = 15; // Maximum 15 Ft-ot mozoghat egy ütemben fel vagy le
+    let change = (Math.random() * (maxStep * 2) - maxStep);
+
+    // FINOMÍTOTT KORREKCIÓ (Mean Reversion)
+    // Csak nagyon gyengén húzzuk vissza az árat, ha elszállna
+    const pullStrength = 0.005;
+    let drift = (START_PRICE - currentPrice) * pullStrength;
+
+    // PIACI ESEMÉNYEK (Ritkább és ésszerűbb)
+    const eventRoll = Math.random();
+    if (eventRoll < 0.008) { // Crash
+        change = -(currentPrice * 0.2); // Az aktuális ár 20%-át veszíti el hirtelen
+        logHistory("⚠️ MARKET CRASH", currentPrice + change, null, "#ff4d4d");
+    } else if (eventRoll > 0.994) { // Pump
+        change = (currentPrice * 0.15); // 15% hirtelen emelkedés
+        logHistory("🚀 POZITÍV HÍREK", currentPrice + change, null, "#00ff41");
+    }
+
+    currentPrice += (change + drift);
+
+    // Biztonsági korlátok: ne legyen negatív és ne legyen irreálisan sok
+    if (currentPrice < 10) currentPrice = 10;
+    if (currentPrice > 2000) currentPrice = 2000;
+
+    priceHistory.push(currentPrice);
+    if (priceHistory.length > 80) priceHistory.shift(); // Kicsit kevesebb pont a jobb láthatóságért
+    
+    drawChart();
+    updateUI();
+}
+
+function drawChart() {
+    canvas.width = canvas.parentElement.clientWidth;
+    canvas.height = canvas.parentElement.clientHeight;
+    const w = canvas.width;
+    const h = canvas.height;
+    
+    // Dinamikus függőleges skálázás (simább mozgás)
+    const min = Math.min(...priceHistory) * 0.9;
+    const max = Math.max(...priceHistory) * 1.1;
+    const range = max - min;
+
+    ctx.clearRect(0, 0, w, h);
+    
+    // Rács
+    ctx.strokeStyle = "#1a1a1a";
+    ctx.lineWidth = 1;
+    for(let i=0; i<=5; i++) {
+        let y = (h / 5) * i;
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+    }
+
+    // Árfolyam vonal (Glow effekttel)
+    ctx.beginPath();
+    ctx.strokeStyle = "#00ff41";
+    ctx.lineWidth = 3;
+    ctx.shadowBlur = 12;
+    ctx.shadowColor = "#00ff41";
+
+    const stepX = w / (priceHistory.length - 1 || 1);
+
+    priceHistory.forEach((p, i) => {
+        const x = i * stepX;
+        const y = h - ((p - min) / range * h);
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+}
+
+// --- KERESKEDÉSI FUNKCIÓK ---
+function updateUI() {
+    document.getElementById('current-price').innerText = currentPrice.toFixed(2);
+    document.getElementById('balance').innerText = balance.toFixed(0);
+    document.getElementById('owned-units').innerText = portfolio.length;
+
+    if (portfolio.length > 0) {
+        const avg = portfolio.reduce((a, b) => a + b, 0) / portfolio.length;
+        const pnl = (currentPrice - avg) * portfolio.length;
+        document.getElementById('entry-price').innerText = avg.toFixed(2);
+        const pnlE = document.getElementById('pnl');
+        pnlE.innerText = pnl.toFixed(0);
+        pnlE.style.color = pnl >= 0 ? "#00ff41" : "#ff4d4d";
+        document.querySelectorAll('.btn-sell').forEach(b => b.disabled = false);
+    } else {
+        document.getElementById('pnl').innerText = "0";
+        document.getElementById('entry-price').innerText = "0";
+        document.querySelectorAll('.btn-sell').forEach(b => b.disabled = true);
+    }
+}
+
+document.getElementById('buy-btn').onclick = () => {
+    if (balance >= currentPrice) {
+        balance -= currentPrice;
+        portfolio.push(currentPrice);
+        logHistory("BUY", currentPrice);
+        updateUI();
+    }
+};
+
+document.getElementById('sell-one-btn').onclick = () => {
+    if (portfolio.length > 0) {
+        const p = portfolio.shift();
+        balance += currentPrice;
+        logHistory("SELL 1", currentPrice, currentPrice - p);
+        updateUI();
+    }
+};
+
+document.getElementById('sell-all-btn').onclick = () => {
+    if (portfolio.length === 0) return;
+    let totalPnl = 0;
+    while(portfolio.length) {
+        const p = portfolio.shift();
+        totalPnl += (currentPrice - p);
+        balance += currentPrice;
+    }
+    logHistory("SELL ALL", currentPrice, totalPnl);
+    updateUI();
+};
+
+document.getElementById('reset-btn').onclick = () => {
+    balance = START_BALANCE; portfolio = []; currentPrice = START_PRICE; priceHistory = [START_PRICE];
+    document.getElementById('history-list').innerHTML = "";
+    updateUI(); drawChart();
+};
+
+function logHistory(t, p, pnl = null, c = null) {
+    const li = document.createElement('li');
+    if (c) li.style.color = c;
+    li.innerText = `[${t}] @ ${p.toFixed(0)} ${pnl !== null ? `| P/L: ${pnl.toFixed(0)}` : ''}`;
+    const list = document.getElementById('history-list');
+    list.prepend(li);
+    if (list.children.length > 10) list.lastElementChild.remove(); // Ne legyen végtelen a lista
+}
+
+// 800ms helyett 400ms-ra állítva a pörgősebb, de simább élményért
+setInterval(updatePrice, 400);
+window.onresize = drawChart;
+drawChart();
+</script>
+</html>
