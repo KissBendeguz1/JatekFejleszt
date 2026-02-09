@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <title>Gyümölcs-Logisztika Szimulátor</title>
+    <style>
+        :root {
+            --bg-color: #1a1a2e;
+            --container-bg: #16213e;
+            --accent: #e94560;
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background-color: var(--bg-color);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .main-layout {
+            display: flex;
+            gap: 30px;
+            background: var(--container-bg);
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.6);
+        }
+
+        .tray {
+            width: 200px;
+            background: #0f3460;
+            padding: 15px;
+            border-radius: 15px;
+            border: 2px solid rgba(255,255,255,0.1);
+            text-align: center;
+            min-height: 450px;
+        }
+
+        .tray h2 {
+            font-size: 1rem;
+            color: var(--accent);
+            margin-bottom: 20px;
+        }
+
+        .fruit {
+            width: 80px;
+            height: 80px;
+            margin: 10px auto;
+            cursor: grab;
+            border-radius: 12px;
+            background-size: cover;
+            background-position: center;
+            border: 2px solid rgba(255,255,255,0.2);
+            transition: transform 0.2s;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .fruit:hover { transform: scale(1.05); }
+
+        .fruit span {
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            width: 100%;
+            font-size: 11px;
+            padding: 2px 0;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        /* Gyümölcs képek */
+        .t-apple { background-image: url('https://images.unsplash.com/photo-1560806887-1e4cd0b6bcd6?q=80&w=150&auto=format&fit=crop'); }
+        .grape { background-image: url('https://images.unsplash.com/photo-1537084642907-629340c7e59c?q=80&w=150&auto=format&fit=crop'); }
+        .peach { background-image: url('https://images.unsplash.com/photo-1529312266912-b33cfce2eefd?q=80&w=150&auto=format&fit=crop'); }
+
+        .truck-container {
+            display: flex;
+            gap: 15px;
+        }
+
+        .truck {
+            width: 160px;
+            background: #0f3460;
+            border-radius: 15px;
+            padding: 10px;
+            border: 2px solid rgba(255,255,255,0.05);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .truck-header {
+            width: 100%;
+            height: 80px;
+            background-size: cover;
+            background-position: center;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+            text-shadow: 2px 2px 4px black;
+            border: 1px solid rgba(255,255,255,0.2);
+            font-size: 1.2rem;
+            letter-spacing: 1px;
+        }
+
+        /* Teherautó fejlécek */
+        .apple { background-image: url('https://images.unsplash.com/photo-1570913149827-d2ac84ab3f9a?q=80&w=200&auto=format&fit=crop'); }
+        .t-grape { background-image: url('https://images.unsplash.com/photo-1596333522248-10186b283cd4?q=80&w=200&auto=format&fit=crop'); }
+        .t-peach { background-image: url('https://images.unsplash.com/photo-1629949009765-40fc74c9db21?q=80&w=200&auto=format&fit=crop'); }
+
+        .cargo-area {
+            width: 140px;
+            height: 250px;
+            background: rgba(0,0,0,0.3);
+            border: 2px dashed rgba(255,255,255,0.2);
+            border-radius: 10px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            padding: 10px;
+            align-content: flex-start;
+            transition: 0.3s;
+        }
+
+        .cargo-area.drag-over { 
+            border-color: var(--accent); 
+            background: rgba(233, 69, 96, 0.15); 
+        }
+
+        .mini-fruit {
+            width: 35px;
+            height: 35px;
+            border-radius: 5px;
+            background-size: cover;
+            border: 1px solid rgba(255,255,255,0.3);
+        }
+
+        .controls { margin-top: 20px; text-align: center; }
+        #score { font-size: 1.8rem; color: #2ecc71; margin-bottom: 10px; font-weight: bold; }
+
+        button {
+            padding: 12px 40px;
+            background: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.2s;
+            text-transform: uppercase;
+        }
+        button:hover { 
+            transform: scale(1.05);
+            filter: brightness(1.2);
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Gyümölcs-Logisztika Szimulátor</h1>
+    <div id="score">Pontszám: 0</div>
+
+    <div class="main-layout">
+        <div class="tray" id="tray">
+            <h2>VÁLOGATÓ TÁLCA</h2>
+        </div>
+
+        <div class="truck-container">
+            <div class="truck">
+                <div class="truck-header t-apple">ALMA</div>
+                <div class="cargo-area" data-type="apple"></div>
+            </div>
+            
+            <div class="truck">
+                <div class="truck-header t-grape">SZŐLŐ</div>
+                <div class="cargo-area" data-type="grape"></div>
+            </div>
+
+            <div class="truck">
+                <div class="truck-header t-peach">BARACK</div>
+                <div class="cargo-area" data-type="peach"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <button onclick="location.reload()">Új Játék</button>
+    </div>
+
+    <script>
+        let score = 0;
+        let draggedType = null;
+        let draggedElem = null;
+        let remainingFruits = 10; // Összesen ennyi gyümölcs van
+
+        const fruitData = [
+            { id: 'apple', name: 'Alma', css: 'apple' },
+            { id: 'grape', name: 'Szőlő', css: 'grape' },
+            { id: 'peach', name: 'Barack', css: 'peach' }
+        ];
+
+        const tray = document.getElementById('tray');
+        for (let i = 0; i < remainingFruits; i++) {
+            const data = fruitData[Math.floor(Math.random() * fruitData.length)];
+            const div = document.createElement('div');
+            div.className = `fruit ${data.css}`;
+            div.draggable = true;
+            div.innerHTML = `<span>${data.name}</span>`;
+            
+            div.addEventListener('dragstart', (e) => {
+                draggedType = data.id;
+                draggedElem = e.target;
+            });
+
+            tray.appendChild(div);
+        }
+
+        document.querySelectorAll('.cargo-area').forEach(area => {
+            area.addEventListener('dragover', (e) => e.preventDefault());
+            area.addEventListener('dragenter', () => area.classList.add('drag-over'));
+            area.addEventListener('dragleave', () => area.classList.remove('drag-over'));
+
+            area.addEventListener('drop', (e) => {
+                e.preventDefault();
+                area.classList.remove('drag-over');
+
+                if (draggedType === area.dataset.type) {
+                    score += 10;
+                    const mini = document.createElement('div');
+                    mini.className = `mini-fruit ${draggedType}`;
+                    
+                    area.appendChild(mini);
+                    draggedElem.remove(); 
+                    remainingFruits--; // Egy gyümölcs sikeresen elrakva
+                } else {
+                    score -= 5;
+                    alert(`Hiba! Az ${draggedType === 'apple' ? 'Alma' : (draggedType === 'grape' ? 'Szőlő' : 'Barack')} nem ebbe a teherautóba való!`);
+                }
+                
+                document.getElementById('score').innerText = `Pontszám: ${score}`;
+
+                // Ellenőrizzük, hogy vége van-e a játéknak
+                if (remainingFruits === 0) {
+                    setTimeout(() => {
+                        alert(`Gratulálunk! Minden gyümölcs a helyére került.\nVégső pontszámod: ${score} pont!`);
+                    }, 300);
+                }
+            });
+        });
+    </script>
+</body>
+</html>
