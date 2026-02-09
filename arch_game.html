@@ -146,75 +146,90 @@
 
     <script>
         const playerGrid = document.getElementById('playerGrid');
-        const refGrid = document.getElementById('refGrid');
-        let draggedType = null;
+const refGrid = document.getElementById('refGrid');
+let draggedType = null;
 
-        // A megoldás (A beküldött kép alapján indexelve 0-24-ig)
-        // 5x5-ös rács: 0-4 (első sor), 5-9 (második)...
-        const solution = {
-            2: 'roof-flat',
-            6: 'roof-l', 7: 'wall', 8: 'roof-r',
-            10:'roof-l',11: 'window', 12: 'wall', 13: 'window', 14: 'roof-r',
-            16: 'wall', 17: 'door', 18: 'wall',
-            21: 'base', 22: 'base', 23: 'base'
-        };
+// A két különböző házminta definíciója
+const patterns = [
+    // 1. minta: Háromszögletű ház (solution)
+    {
+        2: 'roof-flat',
+        6: 'roof-l', 7: 'wall', 8: 'roof-r',
+        10: 'roof-l', 11: 'window', 12: 'wall', 13: 'window', 14: 'roof-r',
+        16: 'wall', 17: 'door', 18: 'wall',
+        21: 'base', 22: 'base', 23: 'base'
+    },
+    // 2. minta: Modern tömbház (solution1)
+    {
+        0: 'roof-flat', 1: 'roof-flat', 2: 'roof-flat', 3: 'roof-flat', 4: 'roof-flat',
+        5: 'wall', 6: 'window', 7: 'wall', 8: 'window', 9: 'wall',
+        10: 'window', 11: 'wall', 12: 'window', 13: 'wall', 14: 'window',
+        15: 'wall', 16: 'door', 17: 'wall', 18: 'door', 19: 'wall',
+        20: 'base', 21: 'base', 22: 'base', 23: 'base', 24: 'base'
+    }
+];
 
-        // Rácsok generálása
-        for (let i = 0; i < 25; i++) {
-            // Játékos slot
-            const slot = document.createElement('div');
-            slot.classList.add('slot');
-            slot.dataset.index = i;
-            setupDragAndDrop(slot);
-            playerGrid.appendChild(slot);
+// Véletlenszerű kiválasztás: 0 vagy 1
+const randomIndex = Math.floor(Math.random() * patterns.length);
+const currentSolution = patterns[randomIndex];
 
-            // Referencia slot
-            const refSlot = document.createElement('div');
-            refSlot.classList.add('slot');
-            if (solution[i]) {
-                const item = document.createElement('div');
-                item.classList.add('part', solution[i]);
-                refSlot.appendChild(item);
-            }
-            refGrid.appendChild(refSlot);
+// Rácsok generálása
+for (let i = 0; i < 25; i++) {
+    // Játékos slot létrehozása
+    const slot = document.createElement('div');
+    slot.classList.add('slot');
+    slot.dataset.index = i;
+    setupDragAndDrop(slot);
+    playerGrid.appendChild(slot);
+
+    // Referencia slot létrehozása (a véletlen minta alapján)
+    const refSlot = document.createElement('div');
+    refSlot.classList.add('slot');
+
+    if (currentSolution[i]) {
+        const item = document.createElement('div');
+        item.classList.add('part', currentSolution[i]);
+        refSlot.appendChild(item);
+    }
+    refGrid.appendChild(refSlot);
+}
+
+function setupDragAndDrop(slot) {
+    slot.addEventListener('dragover', (e) => e.preventDefault());
+    slot.addEventListener('dragenter', () => slot.classList.add('drag-over'));
+    slot.addEventListener('dragleave', () => slot.classList.remove('drag-over'));
+    slot.addEventListener('drop', (e) => {
+        e.preventDefault();
+        slot.classList.remove('drag-over');
+        slot.innerHTML = `<div class="part ${draggedType}"></div>`;
+        slot.dataset.type = draggedType;
+    });
+}
+
+document.querySelectorAll('.inventory .part').forEach(part => {
+    part.addEventListener('dragstart', (e) => draggedType = e.target.id);
+});
+
+function checkSolution() {
+    let correct = true;
+    const slots = playerGrid.querySelectorAll('.slot');
+    
+    for (let i = 0; i < 25; i++) {
+        const playerType = slots[i].dataset.type || null;
+        const requiredType = currentSolution[i] || null;
+
+        if (playerType !== requiredType) {
+            correct = false;
+            break;
         }
+    }
 
-        function setupDragAndDrop(slot) {
-            slot.addEventListener('dragover', (e) => e.preventDefault());
-            slot.addEventListener('dragenter', () => slot.classList.add('drag-over'));
-            slot.addEventListener('dragleave', () => slot.classList.remove('drag-over'));
-            slot.addEventListener('drop', (e) => {
-                e.preventDefault();
-                slot.classList.remove('drag-over');
-                slot.innerHTML = `<div class="part ${draggedType}"></div>`;
-                slot.dataset.type = draggedType;
-            });
-        }
-
-        document.querySelectorAll('.inventory .part').forEach(part => {
-            part.addEventListener('dragstart', (e) => draggedType = e.target.id);
-        });
-
-        function checkSolution() {
-            let correct = true;
-            const slots = playerGrid.querySelectorAll('.slot');
-            
-            for (let i = 0; i < 25; i++) {
-                const playerType = slots[i].dataset.type || null;
-                const requiredType = solution[i] || null;
-
-                if (playerType !== requiredType) {
-                    correct = false;
-                    break;
-                }
-            }
-
-            if (correct) {
-                alert("GRATULÁLOK! Tökéletesen lemásoltad a házat! 🎉");
-            } else {
-                alert("Sajnos valahol hiba van. Nézd meg jobban a mintát! ❌");
-            }
-        }
+    if (correct) {
+        alert("GRATULÁLOK! Tökéletesen lemásoltad a házat! 🎉");
+    } else {
+        alert("Sajnos valahol hiba van. Nézd meg jobban a mintát! ❌");
+    }
+}
     </script>
 </body>
 </html>
