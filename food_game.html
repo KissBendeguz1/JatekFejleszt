@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <title>Szakács Szimulátor - Sorrend Játék</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<style>
+body { background: #121212; color: #d1d1d1; font-family: 'Courier New', monospace; }
+
+.game-wrapper { max-width: 1000px; margin: auto; padding: 20px; }
+
+.kitchen-ui { display: flex; gap: 20px; align-items: flex-start; }
+
+#pantry { width: 250px; background: #1e1e1e; border: 2px solid #333; padding: 10px; border-radius: 4px; }
+
+.ingredient {
+    background: #2a2a2a; border-left: 4px solid #e67e22; 
+    padding: 15px; margin: 10px 0; cursor: grab;
+    transition: all 0.2s; font-weight: bold;
+}
+.ingredient:hover { background: #333; transform: translateX(5px); }
+
+/* Serpenyő egység */
+#pan-socket {
+    width: 350px; height: 350px; background: #222; border: 12px solid #333;
+    border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    box-shadow: inset 0 0 50px #000; position: relative;
+}
+
+#pan-surface {
+    width: 280px; height: 280px; background: #111; border-radius: 50%;
+    overflow: hidden; display: flex; align-items: center; justify-content: center;
+}
+
+#pan-items {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+}
+
+/* Az elem a serpenyőben */
+.item-blob {
+    width: 60px; height: 60px; background: #222; border: 1px solid #e67e22;
+    border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-size: 24px; animation: dropIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes dropIn { from { transform: scale(0); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+#ignite-btn {
+    margin-top: 30px; width: 100%; padding: 15px; background: #c0392b;
+    border: none; color: white; font-weight: bold; cursor: pointer;
+    text-transform: uppercase; letter-spacing: 2px;
+}
+
+#Resetgame {
+        margin-top: 30px; width: 100%; padding: 15px; background: #7a7a7a;
+    border: none; color: white; font-weight: bold; cursor: pointer;
+    text-transform: uppercase; letter-spacing: 2px;
+}
+
+#ignite-btn:hover { background: #ff4d4d; box-shadow: 0 0 15px #ff4d4d; }
+
+#recipe-log { flex: 1; background: #1e1e1e; padding: 15px; border-radius: 4px; height: 400px; overflow-y: auto; }
+#step-list li { border-bottom: 1px solid #333; padding: 8px 0; color: #aaa; }
+</style>
+<body>
+<div class="game-wrapper">
+    <h1>Szakács Szimulátor: Bolognai Projekt</h1>
+    <p id="status">Tedd az összetevőket a megfelelő sorrendben a serpenyőbe.</p>
+    
+    <div class="kitchen-ui">
+        <div id="pantry">
+            <h3>Összetevők</h3>
+            <div class="ingredient" draggable="true" id="ing-0" data-id="0" data-name="Olívaolaj" data-icon="💧">💧 Olívaolaj</div>
+            <div class="ingredient" draggable="true" id="ing-1" data-id="1" data-name="Hagyma & Fokhagyma" data-icon="🧅">🧅 Hagyma & Fokhagyma</div>
+            <div class="ingredient" draggable="true" id="ing-2" data-id="2" data-name="Darált hús" data-icon="🥩">🥩 Darált hús</div>
+            <div class="ingredient" draggable="true" id="ing-3" data-id="3" data-name="Paradicsomszósz" data-icon="🍅">🍅 Paradicsomszósz</div>
+            <div class="ingredient" draggable="true" id="ing-4" data-id="4" data-name="Spagetti tészta" data-icon="🍝">🍝 Spagetti tészta</div>
+            <div class="ingredient" draggable="true" id="ing-5" data-id="5" data-name="Bazsalikom & Sajt" data-icon="🌿">🌿 Bazsalikom & Sajt</div>
+        </div>
+
+        <div id="cooking-deck">
+            <div id="pan-socket">
+                <div id="pan-surface">
+                    <div id="pan-items">
+                        </div>
+                </div>
+            </div>
+            <button id="ignite-btn">Hőkezelés indítása</button>
+            <button id="Resetgame" onclick="ResetGame()">Újraindítás</button>
+        </div>
+
+        <div id="recipe-log">
+            <h3>Eddigi lépések:</h3>
+            <ul id="step-list"></ul>
+        </div>
+        
+    </div>
+</div>
+    <script src="script.js"></script>
+</body>
+<script>
+
+function ResetGame() {
+    window.location.reload()
+}
+const panSurface = document.getElementById('pan-socket');
+const panItems = document.getElementById('pan-items');
+const igniteBtn = document.getElementById('ignite-btn');
+const stepList = document.getElementById('step-list');
+const statusText = document.getElementById('status');
+
+// Helyes sorrend: Olaj(0) -> Hagyma(1) -> Hús(2) -> Szósz(3) -> Tészta(4) -> Díszítés(5)
+const correctOrder = ["0", "1", "2", "3", "4", "5"];
+let userOrder = [];
+
+document.querySelectorAll('.ingredient').forEach(item => {
+    item.addEventListener('dragstart', (e) => {
+        e.dataTransfer.setData('id', e.target.id);
+        e.dataTransfer.setData('icon', e.target.dataset.icon);
+        e.dataTransfer.setData('name', e.target.dataset.name);
+        e.dataTransfer.setData('val', e.target.dataset.id);
+    });
+});
+
+panSurface.addEventListener('dragover', (e) => e.preventDefault());
+
+panSurface.addEventListener('drop', (e) => {
+    e.preventDefault();
+    const id = e.dataTransfer.getData('id');
+    const icon = e.dataTransfer.getData('icon');
+    const name = e.dataTransfer.getData('name');
+    const val = e.dataTransfer.getData('val');
+    const originalElem = document.getElementById(id);
+
+    if (!userOrder.includes(val)) {
+        userOrder.push(val);
+        
+        // 1. Vizuális ikon létrehozása a serpenyőben
+        const blob = document.createElement('div');
+        blob.className = 'item-blob';
+        blob.innerHTML = icon;
+        panItems.appendChild(blob);
+        
+        // 2. Log frissítése
+        const li = document.createElement('li');
+        li.innerHTML = `<span style="color:#e67e22;">></span> ${name} a serpenyőbe került.`;
+        stepList.appendChild(li);
+
+        // 3. Eredeti elrejtése
+        originalElem.style.opacity = "0.2";
+        originalElem.draggable = false;
+    }
+});
+
+igniteBtn.addEventListener('click', () => {
+    if (userOrder.length < correctOrder.length) {
+        statusText.innerHTML = "<span style='color: #f1c40f;'>HIBA: HIÁNYZÓ ÖSSZETEVŐK!</span>";
+        return;
+    }
+
+    const isCorrect = JSON.stringify(userOrder) === JSON.stringify(correctOrder);
+
+    if (isCorrect) {
+        statusText.innerHTML = "<span style='color: #2ecc71;'>SIKER: BOLOGNAI PROJEKT. JÓ ÉTVÁGYAT!</span>";
+        document.getElementById('pan-surface').style.background = "radial-gradient(circle, #8b0000, #111)";
+        igniteBtn.style.display = "none";
+    } else {
+        statusText.innerHTML = "<span style='color: #ff4d4d;'>HIBA: ROSSZ SORREND!</span>";
+        panSurface.style.borderColor = "#ff4d4d";
+    }
+});
+</script>
+</html>
