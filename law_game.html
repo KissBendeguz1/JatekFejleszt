@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <title>Helyszínbiztosító Szimulátor</title>
+    <style>
+        :root {
+            --bg-color: #1a1a2e;
+            --road-color: #333533;
+            --accent: #ffcc00; 
+            --danger: #e94560;
+            /* Az általad választott bója ikon URL-je */
+            --cone-img: url('https://cdn-icons-png.flaticon.com/512/1505/1505455.png');
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background-color: var(--bg-color);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        h1 { margin-bottom: 5px; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); }
+        #score { font-size: 1.8rem; color: var(--accent); margin-bottom: 15px; font-weight: bold; }
+
+        .main-layout {
+            display: flex;
+            gap: 25px;
+            background: #16213e;
+            padding: 25px;
+            border-radius: 20px;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.7);
+        }
+
+        .storage {
+            width: 140px;
+            background: #0f3460;
+            padding: 15px;
+            border-radius: 15px;
+            border: 2px solid rgba(255,255,255,0.1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .storage h2 { font-size: 0.9rem; color: var(--accent); text-transform: uppercase; margin-bottom: 15px; }
+
+        /* Az új bója stílusa a tálcán */
+        .cone {
+            width: 70px;
+            height: 70px;
+            cursor: grab;
+            background-image: var(--cone-img);
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            filter: drop-shadow(2px 4px 6px rgba(0,0,0,0.4));
+            transition: transform 0.2s;
+        }
+
+        .cone:active { cursor: grabbing; transform: scale(1.1); }
+
+        .scene {
+            width: 650px;
+            height: 480px;
+            background-color: var(--road-color);
+            background-image: 
+                linear-gradient(90deg, transparent 49%, rgba(255,255,255,0.2) 50%, transparent 51%),
+                repeating-linear-gradient(0deg, transparent, transparent 38px, rgba(255,255,255,0.1) 40px, transparent 42px);
+            border-radius: 15px;
+            position: relative;
+            border: 5px solid #222;
+            box-shadow: inset 0 0 50px rgba(0,0,0,0.5);
+        }
+
+        .crashed-car {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-20deg);
+            width: 180px;
+            height: 100px;
+            background-image: url('https://images.unsplash.com/photo-1594235340019-38b46614144e?q=80&w=300&auto=format&fit=crop');
+            background-size: cover;
+            background-position: center;
+            border-radius: 8px;
+            box-shadow: 10px 10px 20px rgba(0,0,0,0.6);
+            border: 1px solid #444;
+        }
+
+        .drop-zone {
+            position: absolute;
+            width: 55px;
+            height: 55px;
+            border: 2px dashed rgba(255, 204, 0, 0.5);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: 0.3s;
+        }
+
+        .drop-zone.drag-over { 
+            background: rgba(255, 204, 0, 0.2); 
+            transform: scale(1.2); 
+        }
+
+        /* Az új bója stílusa a pályán */
+        .placed-cone {
+            width: 45px;
+            height: 45px;
+            background-image: var(--cone-img);
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+
+        .controls { margin-top: 20px; }
+        button {
+            padding: 12px 40px;
+            background: var(--danger);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            text-transform: uppercase;
+            transition: 0.2s;
+        }
+        button:hover { filter: brightness(1.2); transform: translateY(-2px); }
+    </style>
+</head>
+<body>
+
+    <h1>Baleseti Helyszín Biztosítása</h1>
+    <div id="score">Pontszám: 0</div>
+
+    <div class="main-layout">
+        <div class="storage" id="storage">
+            <h2>Bóják</h2>
+        </div>
+
+        <div class="scene" id="scene">
+            <div class="crashed-car"></div>
+            
+            <div class="drop-zone" style="top: 80px; left: 160px;"></div>
+            <div class="drop-zone" style="top: 80px; left: 420px;"></div>
+            <div class="drop-zone" style="top: 340px; left: 160px;"></div>
+            <div class="drop-zone" style="top: 340px; left: 420px;"></div>
+            <div class="drop-zone" style="top: 210px; left: 80px;"></div>
+            <div class="drop-zone" style="top: 210px; left: 510px;"></div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <button onclick="location.reload()">Újrakezdés</button>
+    </div>
+
+    <script>
+        let score = 0;
+        let draggedCone = null;
+        let conesNeeded = 6;
+
+        const storage = document.getElementById('storage');
+        for (let i = 0; i < conesNeeded; i++) {
+            const cone = document.createElement('div');
+            cone.className = 'cone';
+            cone.draggable = true;
+            cone.addEventListener('dragstart', (e) => draggedCone = e.target);
+            storage.appendChild(cone);
+        }
+
+        document.querySelectorAll('.drop-zone').forEach(zone => {
+            zone.addEventListener('dragover', (e) => e.preventDefault());
+            zone.addEventListener('dragenter', () => {
+                if (zone.children.length === 0) zone.classList.add('drag-over');
+            });
+            zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+            zone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                zone.classList.remove('drag-over');
+
+                if (zone.children.length === 0) {
+                    const placed = document.createElement('div');
+                    placed.className = 'placed-cone';
+                    zone.appendChild(placed);
+                    draggedCone.remove();
+                    score += 50;
+                    conesNeeded--;
+                    document.getElementById('score').innerText = `Pontszám: ${score}`;
+                    zone.style.border = "none";
+
+                    if (conesNeeded === 0) {
+                        setTimeout(() => {
+                            alert(`Sikeres helyszínbiztosítás!\nVégső pontszámod: ${score} pont!`);
+                        }, 400);
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>
